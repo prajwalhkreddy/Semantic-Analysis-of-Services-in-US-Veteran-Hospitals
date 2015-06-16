@@ -1,0 +1,49 @@
+prefix conversion: <http://purl.org/twc/vocab/conversion/>
+PREFIX dataset1212: <http://logd.tw.rpi.edu/source/data-gov/dataset/1212/vocab/raw/>
+PREFIX dataset1210: <http://logd.tw.rpi.edu/source/data-gov/dataset/1210/vocab/raw/>
+PREFIX dataset1205: <http://logd.tw.rpi.edu/source/data-gov/dataset/1205/vocab/raw/>
+
+
+SELECT DISTINCT ?state ?nurse ?physician ?others ?emergency_beds  ((xsd:int(replace(?icu, ",", ""))) as ?icu) ((xsd:int(replace(?emergency, ",", ""))) as ?emergency)
+((xsd:int(replace(?inpatient, ",", ""))) as ?inpatient) ((xsd:int(replace(?outpatient, ",", ""))) as ?outpatient) 
+WHERE { 
+  graph <http://logd.tw.rpi.edu/source/data-gov/dataset/1205/version/1st-anniversary> {
+        ?s dataset1205:visn ?visn .
+        ?s dataset1205:visn_name ?visn_name .
+        ?s dataset1205:facility_name ?facility_name .
+        ?s dataset1205:city ?city .
+        ?s dataset1205:state ?state.
+  	?s dataset1205:staffing_nursing ?nurse .
+        ?s dataset1205:staffing_physicians ?physician .
+        
+        ?s  dataset1205:staffing_other_health_professionals ?others . 
+		FILTER((?state != "PR") && (?state != "DC")) .
+
+}
+graph <http://logd.tw.rpi.edu/source/data-gov/dataset/1210/version/1st-anniversary>
+ {
+        ?s2 dataset1210:visn ?visn .
+        ?s2 dataset1210:visn_name ?visn_name .
+        ?s2 dataset1210:facility_name ?facility_name .
+        ?s2 dataset1210:city ?city .
+        ?s2 dataset1210:state ?state .
+  	?s2 dataset1210:emergency_room_beds ?emergency_beds .
+        ?s2 dataset1210:intensive_care_unit_class ?icu .
+        FILTER((?state != "PR") && (?state != "DC")) .
+}
+graph <http://logd.tw.rpi.edu/source/data-gov/dataset/1212/version/1st-anniversary>
+ {
+        ?s3 dataset1212:visn ?visn .
+        ?s3 dataset1212:visn_name ?visn_name .
+        ?s3 dataset1212:facility_name ?facility_name .
+        ?s3 dataset1212:city ?city .
+        ?s3 dataset1212:state ?state.
+  	?s3 dataset1212:emergency ?emergency .
+        ?s3 dataset1212:inpatient ?inpatient .
+        ?s3 dataset1212:outpatient ?outpatient .
+        FILTER((?state != "PR") && (?state != "DC")) .
+
+  }
+
+} 
+order by ?state

@@ -1,0 +1,360 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+		<h1>Veterans Healthcare Quality Metrics</h1>
+  	<h2>Average Staff to Procedure Volume Ratio for Veterans Healthcare Facilities Per State, 2008</h2>
+		
+		<!--   import Google visualization  API -->
+    <script type="text/javascript" src="http://www.google.com/jsapi"></script>
+
+    <!--   customize function -->
+    <script type="text/javascript">
+    /* <![CDATA[ */
+      
+
+      // load google visualization packages - STEP 1
+      google.load('visualization', '1', {'packages': ['geochart']});
+        
+      // set callback function for drawing visualizations - STEP 2
+      google.setOnLoadCallback(drawMap);
+   
+      function drawMap() {
+      	//load static data - STEP 3
+      	//var queryurl = "http://logd.tw.rpi.edu/demo/building-logd-visualizations/mashup-353-population-1356-agi.js";
+		  //load data using SPARQL query
+		  var sparqlproxy = "http://logd.tw.rpi.edu/ws/sparqlproxy.php";
+		  var queryloc = "http://www.utdallas.edu/~kxb140230/semantic_web_project/datasetcombined.sparql";    
+		  var service = "http://logd.tw.rpi.edu/sparql";
+		  var queryurl = sparqlproxy 
+                + "?" + "output=gvds"
+                + "&service-uri=" + encodeURIComponent(service)
+                + "&query-uri=" + encodeURIComponent(queryloc) ;
+      	var query = new google.visualization.Query(queryurl); // Send the query.
+      	query.send(handleQueryResponse);
+      }
+  
+      function  handleQueryResponse(response){
+      	// Check for query response errors. - STEP 4
+      	if (response.isError()) {
+           alert('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
+           return;
+      	}
+
+      	// read data  - STEP 5
+      	var data = response.getDataTable();
+      	
+      	// create new data - STEP 6
+      	var newdata = new google.visualization.DataTable();
+		var stateTotals = new google.visualization.DataTable();
+		
+      	newdata.addColumn('string', 'State');
+      	newdata.addColumn('number', 'nurse');
+		newdata.addColumn('number', 'physician');
+		newdata.addColumn('number', 'others');
+		newdata.addColumn('number', 'emergencyBeds');
+		newdata.addColumn('number', 'icu');
+		newdata.addColumn('number', 'emergency');
+		newdata.addColumn('number', 'inpatient');
+		newdata.addColumn('number', 'outpatient');
+		/*
+		newdata.addColumn('number', 'Other Staffing');
+		newdata.addColumn('number', 'Cardiac');
+		newdata.addColumn('number', 'Urology');
+		newdata.addColumn('number', 'Thoraic');
+		newdata.addColumn('number', 'Ortho');
+		newdata.addColumn('number', 'Other');
+		newdata.addColumn('number', 'Vascular');
+		*/				
+		stateTotals.addColumn('string', 'State');
+		stateTotals.addColumn('number', 'noOfNurse');
+		stateTotals.addColumn('number', 'noOfPhysician');
+		stateTotals.addColumn('number', 'noOfOthers');
+		stateTotals.addColumn('number', 'noOfEmergencyBeds');
+		stateTotals.addColumn('number', 'noOfIcu');
+		stateTotals.addColumn('number', 'emergencyRating');
+		stateTotals.addColumn('number', 'inpatientRating');
+		stateTotals.addColumn('number', 'OutPatientRating');
+		/*
+		stateTotals.addColumn('number', 'Other');
+		stateTotals.addColumn('number', 'Cardiac');
+		stateTotals.addColumn('number', 'Urology');
+		stateTotals.addColumn('number', 'Thoraic');
+		stateTotals.addColumn('number', 'Ortho');
+		stateTotals.addColumn('number', 'Other');
+		stateTotals.addColumn('number', 'Vascular');
+		*/
+		
+        // populate each row - STEP 7
+      	var rows = data.getNumberOfRows();
+		var nextValues = [];
+		var stateValues = [];
+		
+		//Adds the first row to newdata, which consists of the first row of data, with
+		//all NaN values converted to 0.
+		var lastIndex = newdata.addRow(constructDataArray(data, 0)); //add the first row to newdata
+		
+		stateValues.push(newdata.getValue(lastIndex, 0)); //push the state name onto stateValues
+		
+		//Build the array that will make the first line of stateValues
+		
+		for (var j = 1; j < newdata.getNumberOfColumns(); j++)
+		{			
+			currentValue = newdata.getValue(lastIndex, j);
+			//pushes 1 for facilities with data, 0 otherwise (this assumes that the row has been
+			//preprocessed with constructDataArray).
+			if (currentValue > 0)
+			{
+				
+				stateValues.push(1);  
+			}	
+			else
+			{
+				
+				stateValues.push(0);
+			}
+		}
+		
+		//Use the constructed array to create the first row of stateTotals
+		stateTotals.addRow(stateValues);
+		//Clear the arrays for the next pass
+		nextValues = [];
+		stateValues = [];
+				
+		//Construct the remaining rows
+		
+      	for (var i = 1; i < rows; i++ )
+      	{	
+		  //Prepare the next row of raw data
+		  nextValues = (constructDataArray(data,i)).concat();
+		  
+		  //If the state is the same as the last one we added, if we are still
+		  //processing facilities in the same state as the last row processed,
+		  //we update the average satisfaction if the facility has nonzero
+		  //satisfaction
+		  if (nextValues[0] == newdata.getValue(lastIndex,0))
+		  {			
+			for (var j = 1; j < newdata.getNumberOfColumns(); j++)
+			{
+				if (nextValues[j] > 0)
+				{
+					
+					var oldValue = newdata.getValue(lastIndex, j);
+					stateTotals.setCell(lastIndex, j, stateTotals.getValue(lastIndex, j) + 1); //Update stateTotals with the new number of rated facilities PROBLEM
+															
+					var updatedValue = oldValue + nextValues[j]; //Add in the new values
+					newdata.setCell(lastIndex, j, updatedValue); //The new average is where it belongs now
+				}
+			}
+		  }
+		  //If the state is different from the last, we create a new row in the newdata table
+		  //We also start a new row in the stateTotals dataTable
+		  else
+		  {
+				stateValues.push(nextValues[0]); //Push the state name
+				
+				for (var j = 1; j < newdata.getNumberOfColumns(); j++)
+				{
+					
+					if (nextValues[j] > 0)
+					{
+						stateValues.push(1);
+					}	
+					else
+					{
+						stateValues.push(0);
+					}
+				}
+				
+				stateTotals.addRow(stateValues); //Add the new row to the stateTotals table
+				lastIndex = newdata.addRow(nextValues); //Add the new row to the newData
+		  }
+		  //Clear the arrays for the next pass
+		  nextValues = [];  
+		  stateValues = [];
+      	}
+		
+		rows = newdata.getNumberOfRows();
+		var columns = newdata.getNumberOfColumns();
+		
+		for (var i = 0; i < rows; i++)
+		{
+			for (var j = 1; j < columns; j++)
+			{
+				var newValue = newdata.getValue(i,j);
+				if (newValue > 0)
+				{
+					newValue = newValue / stateTotals.getValue(i,j);
+					newdata.setCell(i, j, newValue);
+				}
+			}
+		}
+				
+		var staffData = newdata.clone();
+		
+		for (var i = 0; i < rows; i++)
+		{
+			/*
+			newdata.setCell(i, 1, aggregateRow(newdata, i, 1, 7, "avg"));
+			newdata.setCell(i, 7, aggregateRow(newdata, i, 7, 10, "sum"));
+			newdata.setCell(i, 10, aggregateRow(newdata, i, 10, 16, "sum"));
+			*/
+			//Get the sum of the columns required
+			newdata.setCell(i, 1, aggregateRow(newdata, i, 1, 4, "avg"));
+			newdata.setCell(i, 4, aggregateRow(newdata, i, 4, 6, "avg"));
+			newdata.setCell(i, 6, aggregateRow(newdata, i, 6, 9, "avg"));
+		} 
+		
+		//Calculate the staff to procedure ratio
+		/*
+		for (var i = 0; i < rows; i++)
+		{
+			newdata.setCell(i, 1, calculateRatio(newdata, i, 7, 10));
+		}
+		*/
+		//Calculate the sum of the services, staffs and patient satisfaction
+		
+		for (var i = 0; i < rows; i++)
+		{
+			newdata.setCell(i, 1, sum(newdata, i,1, 7, 10));
+		}
+		
+		//Remove excess columns and rename the column with a more accurate label.
+		newdata.removeColumns(2, 8); 		 	
+		newdata.setColumnLabel(1, 'Veterans Points');		
+      	// configure map options - STEP 8
+      	var options = {};
+      	options['region'] = 'US';	// show US map
+      	options['displayMode'] = 'regions';
+		options['resolution'] = 'provinces';
+      	options['width'] = 900;
+      	options['height'] = 550;
+		options['colorAxis'] = {colors:['#FFFF00','#E00000']};
+
+        // define geomap instance - STEP 9
+        var viz = document.getElementById('map_canvas');
+        
+		new google.visualization.GeoChart(viz).draw(newdata, options );
+		//new google.visualization.GeoMap(viz).draw(staffData, options);
+		
+      }
+	  
+	  //Takes a dataTable and row index, and replaces all NaN values with 0
+	  //Returns an array (to be used for creation of data rows in new dataTables.
+	  //This must be done before attempting any aggregation (sum, average) of 
+	  //Items from set 1209.
+	  function constructDataArray(data, row)
+	  {
+		var currentCellValue;
+		var finalIndex = data.getNumberOfColumns();
+		
+		var rowData = [];
+		rowData.push('US-' + data.getValue(row, 0));
+				
+		for (var i = 1; i < finalIndex; i++)
+		{			
+			currentCellValue = data.getValue(row, i);
+			
+			if (isNaN(currentCellValue))
+			{
+				rowData.push(0);
+			}
+			else
+			{
+				rowData.push(currentCellValue);
+			}
+		}
+		
+		return rowData;	  
+	  }
+	  
+	  //Takes a dataTable object representing the 
+	  function averageValues(rawData, totals)
+	  {
+		var rawDataRows = rawData.getNumberOfRows();
+		var totalDataRows = rawData.getNumberOfRows();
+		
+		for (var i = 1; i < rawDataRows; i++ )
+		{
+			
+			rawData.setCell(i, 1, rawData.getValue(i, 1)/totals.getValue(i,1));		
+		}
+		
+		return rawData; 	  
+	  }
+	  
+	  //Returns an aggregation of values (in a single row) 
+	  //Takes a dataTable object, the row index to take values from, the index of the first column 
+	  //to aggregate, the index of the column to stop aggregation on, and the type of aggregation.
+	  //aggregation type must be "sum" or "avg".
+	  function aggregateRow(data, row, startIndex, finishIndex, comboType)
+	  {	
+      	if (comboType != 'sum' && comboType != 'avg') {
+           alert('Error in argument: ' + comboType + ' is not a valid type of aggregation');
+           return;
+      	}
+	  
+		var runningTotal = 0;
+		var totalPopulated = 0;
+				
+		for (var i = startIndex; i < finishIndex; i++)
+		{
+			currentSatisfaction = data.getValue(row, i);
+			if (isNaN(currentSatisfaction) || currentSatisfaction == 0)
+			{
+				runningTotal += 0;
+			}
+			else
+			{
+				runningTotal += currentSatisfaction;
+				totalPopulated++;
+			}
+		}
+		
+		if (comboType == 'sum')
+		{
+			return runningTotal;
+		}
+		else
+		{
+			return (Math.round(runningTotal/totalPopulated));
+		}
+				
+	  }
+	  
+	  //Returns the ratio of one value to another (as a decimal) for a pair of
+	  //same-row items in a dataTable object.
+	  function calculateRatio(data, row, column1, column2)
+	  {
+		if (column2 == 0)
+		{
+			return 0;
+		}
+		return (Math.round(data.getValue(row, column2)/data.getValue(row,column1)));
+	  }
+	  
+	  function sum((data, row, column1, column2, column3)
+	  {
+	  if (column2 == 0)
+		{
+			//return data.getValue(row,column1);
+		}
+	 return data.getValue(row,column1) + data.getValue(row,column2) + data.getValue(row,column3);
+	  }
+	  
+	  
+	  function getStateCounts() {
+	  
+	  }
+    /* ]]> */
+    </script>	
+	</head>
+  <body>
+		<div> </div>	
+			<table >
+				<tr>
+					<td style="width: 690px; background:white"><div id='map_canvas'>Loading ...</div></td>
+				</tr>
+			</table>			   
+	</body>
+</html> 	

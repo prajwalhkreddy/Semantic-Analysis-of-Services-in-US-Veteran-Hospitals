@@ -1,0 +1,195 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+		<h1>Veterans Healthcare Quality Metrics</h1>
+  	<h2>Average Staffing for Veterans Healthcare Facilities Per State, 2008</h2>
+		
+		<!--   import Google visualization  API -->
+    <script type="text/javascript" src="http://www.google.com/jsapi"></script>
+
+    <!--   customize function -->
+    <script type="text/javascript">
+    /* <![CDATA[ */
+      
+      // load google visualization packages - STEP 1
+      google.load('visualization', '1', {'packages': ['geochart', 'corechart']});
+        
+      // set callback function for drawing visualizations - STEP 2
+      google.setOnLoadCallback(drawMap);
+   
+      function drawMap() {
+      	//load static data - STEP 3				
+				//load data using SPARQL query
+				var sparqlproxy = "http://logd.tw.rpi.edu/ws/sparqlproxy.php";
+				//***MODIFY queryloc
+				var queryloc = "http://www.utdallas.edu/~kxb140230/semantic_web_project/datasetcombined.sparql";    
+				var service = "http://logd.tw.rpi.edu/sparql";
+				var queryurl = sparqlproxy 
+                + "?" + "output=gvds"
+                + "&service-uri=" + encodeURIComponent(service)
+                + "&query-uri=" + encodeURIComponent(queryloc) ;
+				
+      	var query = new google.visualization.Query(queryurl); // Send the query.
+      	query.send(handleQueryResponse);
+      }
+  
+      function  handleQueryResponse(response) {
+      	// Check for query response errors. - STEP 4
+      	if (response.isError()) {
+           alert('Error in query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
+           return;
+      	}
+
+      	// read data  - STEP 5
+      	var data = response.getDataTable();
+				
+      	// create new data - STEP 6
+      	var newdata = new google.visualization.DataTable();
+				//***MODIFY column definitions
+      	newdata.addColumn('string', 'State');
+      	newdata.addColumn('number', 'Veteran Formula');
+				
+				var newdata2 = new google.visualization.DataTable();
+				//***MODIFY column definitions
+      	newdata2.addColumn('string', 'Point Distribution');
+      	newdata2.addColumn('number', 'Value');
+
+        // populate each row - STEP 7
+				//***MODIFY response processing code
+      	var rows = data.getNumberOfRows();
+      	for (var i = 0; i < rows; i++ ) {
+				
+					var state = 'US-' + data.getValue(i, 0);
+					var numFacilities =  Number(data.getValue(i, 1));
+					
+					//Get Services details
+					var physicians =  Number(data.getValue(i, 2));
+					var nurses =  Number(data.getValue(i, 3));
+					var other =  Number(data.getValue(i, 4));
+					
+					var staffNum = physicians + nurses + other;
+					var avgStaffNum = Math.round(staffNum/numFacilities);
+					var percentageStaff = Math.round(avgStaffNum/100);
+					
+					//Calculate Services
+					var numberOfBeds = Number(data.getValue(i,5));
+					var icu = Number(data.getValue(i,6));
+					
+					var services = numberOfBeds + icu;
+					var avgServices = Math.round(services/numFacilities);
+					var percentageServices = Math.round(avgServices*100);
+					
+					
+					//Calculate Patient Satisfaction
+					var emergency = Number(data.getValue(i,7));
+					var inpatient = Number(data.getValue(i,8));
+					var outpatient = Number(data.getValue(i,9));
+					
+					var avgPatientSatisfaction = (emergency + inpatient + outpatient)/3;
+					var percentagePatientSatisfaction = avgPatientSatisfaction;
+					
+					var avgPoint = percentageStaff + percentageServices + percentagePatientSatisfaction;
+					alert(avgPoint);
+					newdata.addRow([state, avgPoint]);
+					
+      	}
+      	
+      	// configure map options - STEP 8
+      	var options = {
+					region: 'US',
+					displayMode: 'regions',
+					resolution: 'provinces',
+					width: 900,
+					height: 550,
+					colorAxis: {colors:['#FFFF00','#E00000']}
+				};
+				
+				var options2 = {
+					width: 700,
+					height: 550,
+					pieHole: 0.4,
+					colors:['#0033FF','#00FF66', '#6600CC']
+				};
+
+        // define geomap instance - STEP 9
+        var geochart = new google.visualization.GeoChart(document.getElementById('map_canvas'));
+				geochart.draw(newdata, options);
+				var chart2 = new google.visualization.PieChart(document.getElementById('piechart'));
+				
+				//add selection listener to geochart
+				google.visualization.events.addListener(geochart, 'select', selectHandler);
+				
+				function selectHandler() {
+					//get selected state
+          var selectedItem = geochart.getSelection()[0];
+          if (selectedItem) {
+						//convert selection to a value
+            var topping = data.getValue(selectedItem.row, 0);
+
+						//reset data for new state selection
+						var numRowsPieChart = newdata2.getNumberOfRows();
+						if(numRowsPieChart > 0){
+							var reset = newdata2.removeRows(0, 3)
+						}
+						
+						//capture and process data for pie chart for selected state
+						var rows2 = newdata.getNumberOfRows();
+						for (var i = 0; i < rows2; i++ )
+						{
+								var stateName = 'US-' + topping;
+								if(newdata.getValue(i, 0) == stateName){
+									options2['title'] = 'US-' + topping + ': Average Staffing Distribution';
+									var numFacilities =  Number(data.getValue(i, 1));
+									
+									var piePhysicians =  Number(data.getValue(i, 2));
+									var pieNurses =  Number(data.getValue(i, 3));
+									var pieOther =  Number(data.getValue(i, 4));
+					
+									var pieStaffNum = piePhysicians + pieNurses + pieOther;
+									var pieAvgStaffNum = Math.round(pieStaffNum/numFacilities);
+									var piePercentageStaff = Math.round(pieAvgStaffNum/100);
+					
+									//Calculate Services
+									var pieNumberOfBeds = Number(data.getValue(i,5));
+									var pieIcu = Number(data.getValue(i,6));
+					
+									var pieServices = pieNumberOfBeds + pieIcu;
+									var pieAvgServices = Math.round(pieServices/numFacilities);
+									var piePercentageServices = Math.round(avgServices/100);
+					
+					
+									//Calculate Patient Satisfaction
+									var pieEmergency = Number(data.getValue(i,7));
+									var pieInpatient = Number(data.getValue(i,8));
+									var pieOutpatient = Number(data.getValue(i,9));
+					
+									var avgPatienSatisfaction = (pieEmergency + pieInpatient + pieOutpatient)/3 ;
+									var piePercentagePatientSatisfaction = pieAvgPatientSatisfaction;
+
+									newdata2.addRow(['Staff Points', piePercentageStaff]);
+									newdata2.addRow(['Services Points', piePercentageServices]);
+									newdata2.addRow(['Patient Satisfaction', piePercentagePatientSatisfaction]);
+								}
+						}
+						//draw pie chart
+						chart2.draw(newdata2, options2);
+          }
+        }
+				
+				};//handle query response function
+    /* ]]> */
+    </script>
+  </head>
+	<body>
+	<div>Click a State to Show Distribution</div>
+		<center>				
+			<table >
+				<tr>
+					<td style="width: 690px; background:white"><div id='map_canvas'>Loading ...</div></td>
+					<td style="width: 690px; background:white"><div id='piechart'></div></td>
+				</tr>
+			</table>			   
+		</center>
+	</body>
+</html>

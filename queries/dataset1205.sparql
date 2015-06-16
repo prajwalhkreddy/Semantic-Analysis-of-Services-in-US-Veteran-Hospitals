@@ -1,0 +1,14 @@
+PREFIX dataset1205: <http://logd.tw.rpi.edu/source/data-gov/dataset/1205/vocab/raw/>
+SELECT  ?state (COUNT(?state) as ?stateCount) (SUM(xsd:int(?physician)) as ?phyCount) (SUM(xsd:int(?nurse)) as ?nurseCount) (SUM(xsd:int(?others)) as ?otherscount)
+WHERE { 
+  graph ?g{
+        ?s dataset1205:state ?state.
+  	?s dataset1205:staffing_nursing ?nurse .
+        ?s dataset1205:staffing_physicians ?physician .
+        ?s dataset1205:city ?city .
+        ?s  dataset1205:staffing_other_health_professionals ?others .
+		FILTER((?state != "PR"))
+
+  }
+} 
+order by ?state
